@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FutureFirst</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <div class="stock-live-viewer">
+          <div class="left-card">
+            <div class="img-container">
+              <img
+                src="https://s3-symbol-logo.tradingview.com/apple--big.svg"
+                width="56"
+                height="56"
+                id="stock-img"
+              />
+            </div>
+            <div class="stock-price">
+              <div>
+                <span class="current-price"></span>
+                <span class="price-change"></span>
+                <span class="percent-change"></span>
+                <span class="period"></span>
+              </div>
+              <div class="ohlcv"></div>
+            </div>
+          </div>
+
+          <div class="control-group button-text-selector-container">
+            <button id="live-button">
+              Live &nbsp;
+              <div class="live-dot" />
+            </button>
+          </div>
+        </div>
+        <div class="controls">
+          <div
+            class="control-group button-text-selector-container"
+            id="stock-selector"
+          >
+            <button class="active" data-stock-symbol="AAPL">Apple</button>
+            <button data-stock-symbol="GOOGL">Google</button>
+            <button data-stock-symbol="MSFT">Microsoft</button>
+          </div>
+          <div class="control-group button-text-selector-container sma-control">
+            <button id="sma-button">
+              SMA &nbsp;
+              <img
+                src="icons/eye-slash.svg"
+                alt="Toggle SMA visibility"
+                id="sma-icon"
+              />
+            </button>
+            <input
+              type="number"
+              id="sma-period"
+              value="7"
+              min="2"
+              max="200"
+              disabled
+            />
+          </div>
+        </div>
+      </header>
+
+      <main class="chart-container">
+        <div id="main-chart"></div>
+        <div id="tooltip" class="tooltip"></div>
+      </main>
+      <div class="app-footer">
+        <div class="controls">
+          <div
+            class="control-group button-text-selector-container"
+            id="timeframe-selector"
+          >
+            <button data-timeframe="1day" class="active">1D</button>
+            <button data-timeframe="1month">1M</button>
+            <button data-timeframe="3months">3M</button>
+            <button data-timeframe="1year">1Y</button>
+            <button data-timeframe="5years">5Y</button>
+            <button data-timeframe="all">All</button>
+          </div>
+          <div class="control-group button-text-selector-container">
+            <button id="mock-data-btn">Use MOCK Data</button>
+          </div>
+          <div
+            class="control-group button-selector-container"
+            id="chart-type-selector"
+          >
+            <button data-chart-type="line" class="active">
+              <img src="icons/line.svg" alt="Line Chart Icon" />
+            </button>
+            <button data-chart-type="candlestick">
+              <img src="icons/candle.svg" alt="Candle Chart Icon" />
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="error-message" class="error-message"></div>
+    </div>
+    <script type="module" src="/ts/main.js"></script>
+  </body>
+</html>
