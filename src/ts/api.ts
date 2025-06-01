@@ -24,25 +24,19 @@ const getTimeframeSearchQuery = (timeframe: string) => {
 }
 
 async function getHistoricalData(timeframe: string, symbol: string) {
-    // In a real app, you would fetch from Alpha Vantage API
     const response = await fetch(`${BASE_URL}?${getTimeframeSearchQuery(timeframe)}&symbol=${symbol}&apikey=${API_KEY}`);
     const apiData: OHLCVData[] = await response.json();
     return apiData;
 }
 
-// Fetch stock data from Alpha Vantage
 async function fetchStockData(symbol: string) {
     try {
-        const response = await fetch(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`
-        );
+        const response = await fetch(`${BASE_URL}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`);
         const data = await response.json();
-
         if (data['Error Message']) {
             console.error(`Error fetching ${symbol}:`, data['Error Message']);
             return null;
         }
-
         return data['Global Quote'];
     } catch (error) {
         console.error(`Error fetching ${symbol}:`, error);

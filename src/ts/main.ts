@@ -14,6 +14,9 @@ const liveButton = document.getElementById('live-button') as HTMLButtonElement;
 const liveStockPriceDiv = document.querySelector('.stock-price') as HTMLDivElement;
 const stockImg = document.getElementById('stock-img') as HTMLImageElement;
 const mockDataButton = document.getElementById('mock-data-btn') as HTMLButtonElement;
+const stockSelector = document.getElementById('stock-selector') as HTMLDivElement;
+const timeframeSelector = document.getElementById('timeframe-selector') as HTMLDivElement;
+const chartTypeSelector = document.getElementById('chart-type-selector') as HTMLDivElement;
 
 // Default values
 let symbol: string = 'AAPL'
@@ -564,6 +567,84 @@ function updateStockCard() {
     showStockCard(change, percentChange, historicalData[historicalData.length - 1])
 }
 
+function showStockCard(change: number, percentChange: number, ohlcv: OHLCVData) {
+    let currentPriceDiv = liveStockPriceDiv.querySelector('.current-price')!;
+    let priceChangeDiv = liveStockPriceDiv.querySelector('.price-change')!;
+    let percentChangeDiv = liveStockPriceDiv.querySelector('.percent-change')!;
+    let periodDiv = liveStockPriceDiv.querySelector('.period')!;
+    let ohlcvDiv = liveStockPriceDiv.querySelector('.ohlcv')!;
+
+    periodDiv.textContent = getPeriodLabel(timeframe)
+    currentPriceDiv.innerHTML = `${ohlcv.close.toFixed(2)} <span class="curr">USD</span>`;
+    ohlcvDiv.innerHTML = `
+        <div >
+            <span><strong>O</strong>&nbsp; ${ohlcv.open}</span>
+            <span><strong>H</strong>&nbsp; ${ohlcv.high}</span>
+            <span><strong>L</strong>&nbsp; ${ohlcv.low}</span>
+            <span><strong>C</strong>&nbsp; ${ohlcv.close}</span>
+            <span><strong>V</strong>&nbsp; ${ohlcv.volume}</span>
+        </div>
+        `
+    // Update change indicators
+    priceChangeDiv.textContent = change >= 0 ? `+${change.toFixed(2)}` : change.toFixed(2);
+    percentChangeDiv.textContent = change >= 0 ? `+${percentChange.toFixed(2)}%` : `${percentChange.toFixed(2)}%`;
+    if (change >= 0) {
+        liveStockPriceDiv.classList.add('price-up');
+        liveStockPriceDiv.classList.remove('price-down');
+    }
+    else {
+        liveStockPriceDiv.classList.add('price-down');
+        liveStockPriceDiv.classList.remove('price-up');
+    }
+}
+
+function createMockQuote() {
+    const lastData = historicalData[historicalData.length - 1];
+    const basePrice = lastData.close;
+
+    // Generate random price movement (-0.5% to +0.5%)
+    const changePercent = (Math.random() - 0.5);
+    const newPrice = basePrice * (1 + changePercent / 100);
+
+    // Create mock quote data
+    const quote = {
+        "01. symbol": symbol,
+        "02. open": lastData.close.toFixed(4),
+        "03. high": Math.max(lastData.close, newPrice).toFixed(4),
+        "04. low": Math.min(lastData.close, newPrice).toFixed(4),
+        "05. price": newPrice.toFixed(4),
+        "06. volume": Math.floor(Math.random() * 1000000 + 500000).toString(),
+        "07. latest trading day": new Date().toISOString().split('T')[0],
+        "08. previous close": lastData.close.toFixed(4),
+        "09. change": (newPrice - lastData.close).toFixed(4),
+        "10. change percent": ((newPrice - lastData.close) / lastData.close * 100).toFixed(4) + "%"
+    };
+
+    return quote;
+}
+
+async function getLiveUpdate() {
+    realtimeInterval = setInterval(async () => {
+        if (historicalData.length === 0) return;
+        const quote = USE_MOCK_DATA ? createMockQuote() : await fetchStockData(symbol);
+
+        if (!quote) return;
+        const change = parseFloat(quote['09. change']);
+        const percentChange = parseFloat(quote['10. change percent'].replace('%', ''));
+        let ohlcvData = {
+            open: Number(quote["02. open"]),
+            high: Number(quote["03. high"]),
+            low: Number(quote["04. low"]),
+            close: Number(quote["05. price"]),
+            volume: Number(quote["06. volume"]),
+            date: new Date()
+        } as OHLCVData
+        showStockCard(change, percentChange, ohlcvData)
+        historicalData.push(ohlcvData);
+        showLiveUpdateOnChart()
+    }, 250)
+}
+
 // Handle window resize
 window.addEventListener('resize', () => {
     mainChartWidth = mainChartDiv.clientWidth;
@@ -590,10 +671,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error:', error);
     }
 });
-
-const stockSelector = document.getElementById('stock-selector') as HTMLDivElement;
-const timeframeSelector = document.getElementById('timeframe-selector') as HTMLDivElement;
-const chartTypeSelector = document.getElementById('chart-type-selector') as HTMLDivElement;
 
 timeframeSelector.addEventListener('click', async (event: Event) => {
     const clickedElement = event.target as HTMLElement;
@@ -667,84 +744,6 @@ smaButton.addEventListener('click', () => {
     }
 })
 
-function showStockCard(change: number, percentChange: number, ohlcv: OHLCVData) {
-    let currentPriceDiv = liveStockPriceDiv.querySelector('.current-price')!;
-    let priceChangeDiv = liveStockPriceDiv.querySelector('.price-change')!;
-    let percentChangeDiv = liveStockPriceDiv.querySelector('.percent-change')!;
-    let periodDiv = liveStockPriceDiv.querySelector('.period')!;
-    let ohlcvDiv = liveStockPriceDiv.querySelector('.ohlcv')!;
-
-    periodDiv.textContent = getPeriodLabel(timeframe)
-    currentPriceDiv.innerHTML = `${ohlcv.close.toFixed(2)} <span class="curr">USD</span>`;
-    ohlcvDiv.innerHTML = `
-        <div >
-            <span><strong>O</strong>&nbsp; ${ohlcv.open}</span>
-            <span><strong>H</strong>&nbsp; ${ohlcv.high}</span>
-            <span><strong>L</strong>&nbsp; ${ohlcv.low}</span>
-            <span><strong>C</strong>&nbsp; ${ohlcv.close}</span>
-            <span><strong>V</strong>&nbsp; ${ohlcv.volume}</span>
-        </div>
-        `
-    // Update change indicators
-    priceChangeDiv.textContent = change >= 0 ? `+${change.toFixed(2)}` : change.toFixed(2);
-    percentChangeDiv.textContent = change >= 0 ? `+${percentChange.toFixed(2)}%` : `${percentChange.toFixed(2)}%`;
-    if (change >= 0) {
-        liveStockPriceDiv.classList.add('price-up');
-        liveStockPriceDiv.classList.remove('price-down');
-    }
-    else {
-        liveStockPriceDiv.classList.add('price-down');
-        liveStockPriceDiv.classList.remove('price-up');
-    }
-}
-
-function createMockQuote() {
-    const lastData = historicalData[historicalData.length - 1];
-    const basePrice = lastData.close;
-    
-    // Generate random price movement (-0.5% to +0.5%)
-    const changePercent = (Math.random() - 0.5);
-    const newPrice = basePrice * (1 + changePercent / 100);
-    
-    // Create mock quote data
-    const quote = {
-        "01. symbol": symbol,
-        "02. open": lastData.close.toFixed(4),
-        "03. high": Math.max(lastData.close, newPrice).toFixed(4),
-        "04. low": Math.min(lastData.close, newPrice).toFixed(4),
-        "05. price": newPrice.toFixed(4),
-        "06. volume": Math.floor(Math.random() * 1000000 + 500000).toString(),
-        "07. latest trading day": new Date().toISOString().split('T')[0],
-        "08. previous close": lastData.close.toFixed(4),
-        "09. change": (newPrice - lastData.close).toFixed(4),
-        "10. change percent": ((newPrice - lastData.close) / lastData.close * 100).toFixed(4) + "%"
-    };
-
-    return quote;
-}
-
-async function getLiveUpdate() {
-    realtimeInterval = setInterval(async () => {
-        if (historicalData.length === 0) return;
-        const quote = USE_MOCK_DATA ? createMockQuote() : await fetchStockData(symbol);
-
-        if (!quote) return;
-        const change = parseFloat(quote['09. change']);
-        const percentChange = parseFloat(quote['10. change percent'].replace('%', ''));
-        let ohlcvData = {
-            open: Number(quote["02. open"]),
-            high: Number(quote["03. high"]),
-            low: Number(quote["04. low"]),
-            close: Number(quote["05. price"]),
-            volume: Number(quote["06. volume"]),
-            date: new Date()
-        } as OHLCVData
-        showStockCard(change, percentChange, ohlcvData)
-        historicalData.push(ohlcvData);
-        showLiveUpdateOnChart()
-    }, 250)
-}
-
 liveButton.addEventListener('click', () => {
     const liveDot = liveButton.querySelector('.live-dot');
     const isActive = liveDot?.classList.contains('active');
@@ -761,7 +760,7 @@ liveButton.addEventListener('click', () => {
 mockDataButton.addEventListener('click', async () => {
     const isActive = mockDataButton.classList.contains('active');
     USE_MOCK_DATA = isActive ? false : true;
-    if(!isActive){
+    if (!isActive) {
         initCharts();
         historicalData = await generateHistoricalData(symbol, timeframe, true);
         smaData = calculateSMA(historicalData, parseInt(smaPeriodInput.value));

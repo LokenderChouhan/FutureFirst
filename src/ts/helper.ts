@@ -124,8 +124,6 @@ function filterDataByTimeframe(data: OHLCVData[], timeframe: string): OHLCVData[
             throw new Error("Invalid timeframe");
     }
 
-    console.log(cutoffDate.toDateString())
-
     return data.filter((item) => item.date >= cutoffDate);
 }
 
@@ -207,6 +205,5 @@ function getStockImgUrl(symbol:string) {
             return '';
     }
 }
-
 
 export { calculateSMA, getDataDateInterval, generateHistoricalData, getPeriodLabel, getStockImgUrl }

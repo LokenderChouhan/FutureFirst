@@ -8,7 +8,6 @@ export interface OHLCVData {
     volume: number;
 }
 
-
 export interface SMAData {
     date: Date;
     value: number;
