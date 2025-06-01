@@ -608,6 +608,7 @@ timeframeSelector.addEventListener('click', async (event: Event) => {
             timeframe = newTimeframe
             historicalData = await generateHistoricalData(symbol, timeframe, USE_MOCK_DATA);
             updateCharts();
+            updateStockCard();
         }
     }
 });

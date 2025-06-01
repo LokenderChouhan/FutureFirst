@@ -3,4 +3,4 @@ dist/
 .DS_Store
 .env
 *.log
-src/config.ts
+# src/config.ts
