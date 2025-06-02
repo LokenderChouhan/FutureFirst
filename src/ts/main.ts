@@ -735,6 +735,7 @@ smaButton.addEventListener('click', () => {
     if (smaPeriodInput.disabled) {
         smaPeriodInput.disabled = false
         smaIcon.setAttribute('src', 'icons/eye.svg')
+        smaData = calculateSMA(historicalData, parseInt(smaPeriodInput.value));
         drawSMALine();
     }
     else {
