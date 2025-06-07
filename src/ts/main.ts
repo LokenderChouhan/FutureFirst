@@ -1,11 +1,10 @@
-
-import * as d3 from 'd3';
 import { getAvailableInterval, getNumInterval } from './helper';
 import { ChartType, Interval, IntervalSelectOption, Margin, OHLCVData, Timeframe } from './types';
 import { upateStockPriceView, updateStockImg } from './stockCard';
 import { generateMockOHLCV, generateNextMockOHLCV } from './mockData';
-import { addDataPoint, addTrendingLines, drawCandleStickChart, drawLineChart, drawSMALine, hideSMALine, initCharts, removeDrawingLine, startFreeTrendingLineDrawing, startHzTrendingLineDrawing } from './Chart';
+import { addDataPoint, addTrendingLines, drawCandleStickChart, drawLineChart, drawSMALine, hideSMALine, initCharts, removeDrawingTrendingLine, startFreeTrendingLineDrawing, startHzTrendingLineDrawing } from './Chart';
 
+// config
 const margin: Margin = { top: 10, left: 10, bottom: 40, right: 40 }
 const svgWidth = 1000;
 const svgHeight = 400;
@@ -21,15 +20,15 @@ const intervalSelect = document.querySelector('#interval-select') as HTMLSelectE
 const chartTypeSelector = document.getElementById('chart-type-selector') as HTMLDivElement;
 const trendingLineSelector = document.getElementById('trending-line-selector') as HTMLDivElement;
 
+// DOM values
 let timeframe: Timeframe = '1day'
 let chartType: ChartType = 'line'
 let symbol: string = 'AAPL';
 let interval: Interval = '1min'
 
-let liveIntervalId: number | null = null;
-
 // data
 let data: OHLCVData[] = [];
+let liveIntervalId: number | null = null;
 
 function resetTrendingLineSelector() {
     const buttons = trendingLineSelector.querySelectorAll('button');
@@ -84,10 +83,9 @@ function reInitiateLive() {
     }
 }
 
-// ------------------ 
+// ------------------
+
 smaButton.addEventListener('click', () => {
-    const chartGroup = d3.select('svg').select('.chart-group')
-    if (chartGroup.empty()) return
     if (smaPeriodInput.disabled) {
         smaPeriodInput.disabled = false
         smaIcon.setAttribute('src', 'icons/eye.svg')
@@ -101,8 +99,6 @@ smaButton.addEventListener('click', () => {
 })
 
 smaPeriodInput.addEventListener('change', () => {
-    const chartGroup = d3.select('svg').select('.chart-group')
-    if (chartGroup.empty()) return
     drawSMALine(parseInt(smaPeriodInput.value))
 })
 
@@ -214,24 +210,24 @@ trendingLineSelector.addEventListener('click', async (event: Event) => {
     if (clickedButton) {
         if (clickedButton.dataset.trendingLineType == 'diagTrendingLine') {
             if (clickedButton.classList.contains('active')) {
-                removeDrawingLine()
+                removeDrawingTrendingLine()
                 resetTrendingLineSelector()
             }
             else {
                 resetTrendingLineSelector()
                 clickedButton.classList.add('active')
-                startFreeTrendingLineDrawing()
+                startFreeTrendingLineDrawing(resetTrendingLineSelector)
             }
         }
         if (clickedButton.dataset.trendingLineType == 'hzTrendingLine') {
             if (clickedButton.classList.contains('active')) {
                 resetTrendingLineSelector()
-                removeDrawingLine()
+                removeDrawingTrendingLine()
             }
             else {
                 resetTrendingLineSelector()
                 clickedButton.classList.add('active')
-                startHzTrendingLineDrawing()
+                startHzTrendingLineDrawing(resetTrendingLineSelector)
             }
 
         }
