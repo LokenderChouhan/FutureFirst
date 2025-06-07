@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FutureFirst</title>
-    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
     <div id="app">
       <header class="app-header">
-        <div class="stock-live-viewer">
-          <div class="left-card">
+        <div class="row">
+          <div class="stock-live-viewer">
             <div class="img-container">
               <img
                 src="https://s3-symbol-logo.tradingview.com/apple--big.svg"
@@ -33,11 +33,12 @@
           <div class="control-group button-text-selector-container">
             <button id="live-button">
               Live &nbsp;
+              <!-- active -->
               <div class="live-dot" />
             </button>
           </div>
         </div>
-        <div class="controls">
+        <div class="row">
           <div
             class="control-group button-text-selector-container"
             id="stock-selector"
@@ -46,7 +47,19 @@
             <button data-stock-symbol="GOOGL">Google</button>
             <button data-stock-symbol="MSFT">Microsoft</button>
           </div>
-          <div class="control-group button-text-selector-container sma-control">
+          <div
+            class="control-group button-text-selector-container"
+            id="sma-control"
+          >
+            <div>
+              <span>Interval</span>
+              <select id="interval-select">
+                <option value="1min">1 min</option>
+                <option value="5min">5 min</option>
+                <option value="1hr">1 Hr</option>
+              </select>
+            </div>
+
             <button id="sma-button">
               SMA &nbsp;
               <img
@@ -68,11 +81,12 @@
       </header>
 
       <main class="chart-container">
-        <div id="main-chart"></div>
+        <div id="main-chart">
+        </div>
         <div id="tooltip" class="tooltip"></div>
       </main>
       <div class="app-footer">
-        <div class="controls">
+        <div class="row controls">
           <div
             class="control-group button-text-selector-container"
             id="timeframe-selector"
@@ -82,13 +96,20 @@
             <button data-timeframe="3months">3M</button>
             <button data-timeframe="1year">1Y</button>
             <button data-timeframe="5years">5Y</button>
-            <button data-timeframe="all">All</button>
-          </div>
-          <div class="control-group button-text-selector-container">
-            <button id="mock-data-btn">Use MOCK Data</button>
           </div>
           <div
-            class="control-group button-selector-container"
+            class="control-group"
+            id="trending-line-selector"
+          >
+            <button data-trending-line-type="diagTrendingLine">
+              <img src="icons/diagTrendingLine.svg" alt="Line Chart Icon" />
+            </button>
+            <button data-trending-line-type="hzTrendingLine">
+              <img src="icons/hzTrendingLine.svg" alt="Candle Chart Icon" />
+            </button>
+          </div>
+          <div
+            class="control-group"
             id="chart-type-selector"
           >
             <button data-chart-type="line" class="active">
@@ -100,7 +121,6 @@
           </div>
         </div>
       </div>
-      <div id="error-message" class="error-message"></div>
     </div>
     <script type="module" src="/ts/main.js"></script>
   </body>

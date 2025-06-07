@@ -1,0 +1,317 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --primary-color: #2962ff;
+  --secondary-color: #448aff;
+
+  --positive-color: #049981;
+  --positive-gradient-start-color: rgba(4, 153, 129, 0.3);
+  --positive-gradient-end-color: rgba(4, 153, 129, 0);
+
+  --negative-color: #f23645;
+  --negative-gradient-start-color: rgb(242, 54, 69, 0.3);
+  --negative-gradient-end-color: rgb(242, 54, 69, 0);
+
+  --primary-color: #333;
+  --card-bg: #ffffff;
+  --border-color: #e0e0e0;
+  --grid-color: #f2f2f2;
+  --tooltip-bg: rgba(31, 12, 12, 0.7);
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: var(--primary-color);
+  background-color: var(--primary-color);
+  height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+button {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  background-color: transparent;
+  border: none;
+
+  &:hover,
+  &.active {
+    background-color: var(--grid-color);
+  }
+}
+
+#app {
+  background-color: var(--card-bg);
+  padding: 20px;
+  border-radius: 8px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.chart-container {
+  position: relative;
+  background-color: var(--card-bg);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-header {
+  .sma-control {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+.control-group {
+  gap: 3px;
+  display: flex;
+  align-items: center;
+}
+
+.stock-live-viewer {
+  display: flex;
+  gap: 1rem;
+  margin: 0 0 0.5rem 0.5rem;
+  align-items: center;
+
+  .img-container {
+    width: 58px;
+    height: 58px;
+    overflow: hidden;
+    border: 1px solid;
+    border-radius: 50%;
+  }
+
+  .left-card {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .stock-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+  }
+
+  .stock-price {
+    font-size: 1.5rem;
+    font-weight: bold;
+
+    .curr,
+    .ohlcv {
+      font-size: 0.7rem;
+      color: var(--primary-color);
+    }
+
+    .ohlcv {
+      font-weight: 200;
+      border: 0.2px dashed;
+      padding: 0 3px;
+    }
+
+    .current-price {
+      color: var(--primary-color);
+    }
+
+    &.price-up {
+      color: var(--positive-color);
+    }
+
+    &.price-down {
+      color: var(--negative-color);
+    }
+    .price-change,
+    .percent-change,
+    .period {
+      font-size: 1rem;
+    }
+  }
+}
+
+#chart-type-selector, #trending-line-selector {
+  border: var(--grid-color) 2px solid;
+  border-radius: 9px;
+  padding: 1px;
+  button {
+    padding: 0.15rem 0.5rem;
+  }
+  button:first-child {
+    border-radius: 9px 0 0 9px;
+  }
+  button:last-child {
+    border-radius: 0 9px 9px 0;
+  }
+}
+
+#sma-control {
+  button {
+    padding: 0.15rem 0.5rem;
+  }
+  input {
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    width: 60px;
+    height: 100%;
+  }
+}
+
+#interval-select {
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  width: 80px;
+  height: 100%;
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  position: relative;
+  background-color: var(--negative-color);
+  &.active {
+    background-color: var(--positive-color);
+  }
+}
+
+/* Pulse animation */
+.live-dot.active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #28a745; /* Same color as the dot */
+  border-radius: 50%;
+  animation: pulse 1.5s infinite ease-out; /* The pulsing animation */
+  z-index: 0; /* Ensures it's behind the main dot */
+  opacity: 0.7; /* Start with some opacity */
+}
+
+/* Ensure pulse is hidden when not active */
+.live-dot:not(.active)::before {
+  content: ""; /* Still needs content for pseudo-element to exist */
+  opacity: 0; /* Hide the pulse */
+  animation: none; /* Ensure no animation is running */
+}
+
+/* Optional: a subtle inner glow or shadow */
+.live-dot::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  box-shadow: 0 0 0 1px rgba(40, 167, 69, 0.5); /* Subtle inner ring */
+  border-radius: 50%;
+  z-index: 2; /* On top of the dot but under pulse if needed */
+}
+
+/* Keyframes for the pulse effect */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(2.5); /* How much it expands */
+    opacity: 0; /* Fades out */
+  }
+  100% {
+    transform: scale(1); /* Resets for next pulse */
+    opacity: 0;
+  }
+}
+
+/* Class to pause/play animation */
+.live-dot.paused::before {
+  animation-play-state: paused;
+  opacity: 0; /* Hide the pulse when paused */
+}
+
+/* Axes styles */
+
+.axis-group {
+  .axis text {
+    fill: var(--primary-color);
+  }
+  .domain {
+    stroke-opacity: 0;
+  }
+  .tick {
+    line {
+      stroke-opacity: 0;
+    }
+  }
+}
+
+/* SMA line */
+.sma-line {
+  fill: none;
+  stroke: #ff9800;
+  stroke-width: 2;
+  stroke-dasharray: 5, 5;
+}
+
+#main-chart {
+  /* position: relative; */
+}
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  padding: 5px;
+  background-color: var(--tooltip-bg);
+  color: var(--border-color);
+
+  border-radius: 4px;
+  pointer-events: none;
+  font-size: 0.7rem;
+  transition: opacity 0.2s;
+  z-index: 10;
+  font-weight: bold;
+  opacity: 0;
+  div:last-of-type {
+    font-weight: normal;
+    /* text-align: center; */
+    color: var(--border-color);
+  }
+  max-width: 120px;
+}
+
+.tooltip-line {
+  stroke: var(--primary-color);
+  stroke-dasharray: 5 5;
+}

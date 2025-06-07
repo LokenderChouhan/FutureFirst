@@ -1,6 +1,4 @@
-import { symbol } from "d3";
-import { getHistoricalData } from "./api";
-import { OHLCVData, SMAData, StockQuote } from "./types";
+import { Interval, IntervalSelectOption, OHLCVData, SMAData } from "./types";
 
 function calculateSMA(data: OHLCVData[], period: number, priceKey: keyof OHLCVData = 'close'): SMAData[] {
     if (period <= 0 || !data || data.length < period) {
@@ -34,138 +32,26 @@ function calculateSMA(data: OHLCVData[], period: number, priceKey: keyof OHLCVDa
     return smaValues;
 }
 
-function getDataDateInterval(timeframe: string): number {
-    let mins = 1;
-    switch (timeframe) {
-        case "1day":
-            mins = 5; // 5 mins 
-            break;
-        case "1month":
-        case "3months":
-            mins = 12; // 1 hour 
-            break;
-        case "1year":
-            mins = 12 * 7 * 24; // Weekly
-            break;
-        case "5years":
-        case "all":
-            mins = 12 * 30 * 24; // Monthly
-            break;
-        default:
-            break;
-    }
-    return mins
-}
+function getAvailableInterval(timeframe: string): IntervalSelectOption[] {
 
-function parseAlphaVantageData(data: any, timeframe: string): OHLCVData[] {
-    let timeSeriesKey: string;
+    let min1: IntervalSelectOption = { value: "1min", label: "1 min" }
+    let min5: IntervalSelectOption = { value: "5min", label: "5 min" }
+    let ahr: IntervalSelectOption = { value: "1hr", label: "1 Hr" }
+    let aDay: IntervalSelectOption = { value: "1day", label: "1 Day" }
+    let aWeek: IntervalSelectOption = { value: "1week", label: "1 Week" }
 
     switch (timeframe) {
-        case "1day":
-            timeSeriesKey = "Time Series (60min)";
-            break;
-        case "1month":
-            timeSeriesKey = "Time Series (60min)";
-            break;
-        case "1year":
-        case "3months":
-            timeSeriesKey = "Weekly Time Series";
-            break;
-        case "5years":
-        case "all":
-            timeSeriesKey = "Monthly Time Series";
-            break;
+        case '1day':
+            return [min1, min5, ahr]
+        case '1month':
+            return [min5, ahr, aDay]
+        case '3months':
+            return [ahr, aDay, aWeek]
+        case '1year':
+        case '5years':
+            return [aDay, aWeek]
         default:
-            throw new Error("Invalid timeframe");
-    }
-
-    const timeSeries = data[timeSeriesKey];
-    const parsedData: OHLCVData[] = [];
-
-    for (const date in timeSeries) {
-        parsedData.push({
-            date: new Date(date),
-            open: parseFloat(timeSeries[date]["1. open"]),
-            high: parseFloat(timeSeries[date]["2. high"]),
-            low: parseFloat(timeSeries[date]["3. low"]),
-            close: parseFloat(timeSeries[date]["4. close"]),
-            volume: parseInt(timeSeries[date]["5. volume"]),
-        });
-    }
-
-    return parsedData.sort((a, b) => a.date.getTime() - b.date.getTime());
-}
-
-function filterDataByTimeframe(data: OHLCVData[], timeframe: string): OHLCVData[] {
-    let lastDate = data[data.length - 1].date
-    const now = lastDate;
-
-    let cutoffDate: Date;
-
-    switch (timeframe) {
-        case "1day":
-            cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
-            break;
-        case "1month":
-            cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
-            break;
-        case "3months":
-            cutoffDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // 90 days ago
-            break;
-        case "1year":
-            cutoffDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000); // 365 days ago
-            break;
-        case "5years":
-            cutoffDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000); // 5 years ago
-            break;
-        case "all":
-            return data; // No filtering
-        default:
-            throw new Error("Invalid timeframe");
-    }
-
-    return data.filter((item) => item.date >= cutoffDate);
-}
-
-async function getMockData(timeframe: string) {
-    let fileName = 'day5min.json'
-    switch (timeframe) {
-        case "1day":
-            fileName = "day60min.json";
-            break;
-        case "1month":
-            fileName = "2year60min.json";
-            break;
-        case "3months":
-        case "1year":
-            fileName = "weekly.json";
-            break;
-        case "5years":
-        case "all":
-            fileName = "monthly.json";
-            break;
-        default:
-            throw new Error("Invalid timeframe");
-    }
-
-    const response = await fetch(`/mock/${fileName}`);
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data: OHLCVData[] = await response.json();
-    return data;
-}
-
-// Generate mock historical data (1-hour intervals)
-async function generateHistoricalData(symbol: string, timeframe: string, USE_MOCK_DATA: boolean): Promise<OHLCVData[]> {
-    try {
-        const apiData = USE_MOCK_DATA ? await getMockData(timeframe) : await getHistoricalData(timeframe, symbol)
-        let parsedData = parseAlphaVantageData(apiData, timeframe)
-        let data = filterDataByTimeframe(parsedData, timeframe);
-        return data;
-    } catch (error) {
-        console.error('Error generating historical data:', error);
-        throw error;
+            return [];
     }
 }
 
@@ -193,7 +79,7 @@ function getPeriodLabel(timeframe: string) {
     return label;
 }
 
-function getStockImgUrl(symbol:string) {
+function getStockImgUrl(symbol: string) {
     switch (symbol) {
         case 'AAPL':
             return 'https://s3-symbol-logo.tradingview.com/apple--big.svg'
@@ -206,4 +92,23 @@ function getStockImgUrl(symbol:string) {
     }
 }
 
-export { calculateSMA, getDataDateInterval, generateHistoricalData, getPeriodLabel, getStockImgUrl }
+function getNumInterval(interval: Interval, ms: number): number {
+    let msInMin = 60 * 1000
+    let msInHr = msInMin * 60
+    switch (interval) {
+        case "1min":
+            return (msInMin / ms)
+        case "5min":
+            return ((5 * msInMin) / ms)
+        case "1hr":
+            return (msInHr / ms)
+        case "1day":
+            return ((24 * msInHr) / ms)
+        case "1week":
+            return ((7 * 24 * msInHr) / ms)
+        default:
+            return 0
+    }
+}
+
+export { calculateSMA, getPeriodLabel, getStockImgUrl, getNumInterval, getAvailableInterval }
