@@ -36,13 +36,20 @@ function resetTrendingLineSelector() {
     buttons.forEach(button => button.classList.remove('active'));
 }
 
-function setIntervalOptions(intervalOptions: IntervalSelectOption[], value: Interval) {
+function setIntervalOptions(intervalOptions: IntervalSelectOption[], currInterval: Interval): Interval{
+    let newInterval = currInterval;
+    let isCurrIntervalValid = intervalOptions.some((intervalOption) => intervalOption.value == currInterval)
+    if (!isCurrIntervalValid) {
+        newInterval = intervalOptions[0].value
+    }
+    // set html
     let optionsHtml = ''
     intervalOptions.forEach((option) => {
         optionsHtml += `<option value="${option.value}">${option.label}</option>`
     })
-    intervalSelect.value = value
     intervalSelect.innerHTML = optionsHtml
+    intervalSelect.value = newInterval
+    return newInterval
 }
 
 function startLive() {
@@ -150,11 +157,7 @@ timeframeSelector.addEventListener('click', async (event: Event) => {
             timeframe = newTimeframe as Timeframe
 
             const intervalOptions = getAvailableInterval(newTimeframe)
-            let isCurrIntervalValid = intervalOptions.some((intervalOption) => intervalOption.value == interval)
-            if (!isCurrIntervalValid) {
-                interval = intervalOptions[0].value
-                setIntervalOptions(intervalOptions, interval)
-            }
+            interval = setIntervalOptions(intervalOptions, interval)
 
             data = generateMockOHLCV(timeframe, interval);
             upateStockPriceView(data, timeframe)
