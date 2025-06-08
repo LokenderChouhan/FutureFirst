@@ -41,6 +41,7 @@ const initCharts = (
     containerDiv.selectAll('svg').remove()
     containerDiv
         .append('svg')
+        .attr('class', 'chart-svg')
         .attr('width', svgWidth)
         .attr('height', svgHeight)
         .style("cursor", 'crosshair')
