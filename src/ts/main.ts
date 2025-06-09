@@ -94,7 +94,7 @@ smaButton.addEventListener('click', () => {
     else {
         smaPeriodInput.disabled = true
         smaIcon.setAttribute('src', 'icons/eye-slash.svg')
-        hideSMALine(chartGroup)
+        hideSMALine()
     }
 })
 
