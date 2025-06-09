@@ -58,11 +58,12 @@ export type TrendingLineData = {
     line: d3.Selection<SVGLineElement, unknown, HTMLElement, any>,
     startCircle?: d3.Selection<SVGCircleElement, unknown, HTMLElement, any>,
     endCircle?: d3.Selection<SVGCircleElement, unknown, HTMLElement, any>,
-    priceHighlightRect: TrendingLinePriceHighlight
+    priceHighlightRect: AxisTrendingLineHighlightRect,
+    dateHighlightRect: AxisTrendingLineHighlightRect,
 }
 
 
-export type TrendingLinePriceHighlight = {
+export type AxisTrendingLineHighlightRect = {
     coverRect: d3.Selection<SVGRectElement, unknown, HTMLElement, any>,
     startRect: d3.Selection<SVGRectElement, unknown, HTMLElement, any>,
     endRect: d3.Selection<SVGRectElement, unknown, HTMLElement, any>,

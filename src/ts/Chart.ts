@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
-import { ChartType, Margin, OHLCVData, SMAData, TrendingLineData, TrendingLinePriceHighlight } from './types';
-import { calculateSMA } from './helper';
+import { ChartType, Margin, OHLCVData, SMAData, TrendingLineData, AxisTrendingLineHighlightRect } from './types';
+import { calculateSMA, formatDate } from './helper';
 
 // d3
 let xScaleOriginal: d3.ScaleTime<number, number>;
@@ -98,7 +98,6 @@ const initCharts = (
     handleMouseEvents();
 }
 
-
 function handleMouseEvents() {
     let chartSvg = d3.select('.chart-svg')
     const chartGroup = d3.select('.chart-group')
@@ -134,7 +133,7 @@ function zoomHandler() {
         .translateExtent([[0, 0], [svgWidth, svgHeight]])
         .on('zoom', (event: d3.D3ZoomEvent<SVGSVGElement, unknown>) => {
 
-            if (isDrawingFreeTrendingLine) return;
+            if (isDrawingFreeTrendingLine || isDrawingHzTrendingLine) return;
 
             const transform = event.transform;
 
@@ -235,6 +234,120 @@ function startHzTrendingLineDrawing(onComplete: () => void) {
     onTrendingLineComplete = onComplete
 }
 
+function freeLineCircleDragHandler(this: SVGCircleElement, event: d3.D3DragEvent<SVGCircleElement, unknown, unknown>) {
+
+    const circle = d3.select(this);
+    const circleId = circle.attr('id');
+
+    const lineData = trendingLinesData.find((d: TrendingLineData) => {
+        const startCircleId = d.startCircle?.attr('id');
+        const endCircleId = d.endCircle?.attr('id');
+        return startCircleId === circleId || endCircleId === circleId;
+    });
+
+    if (!lineData) return;
+
+    const [minPrice, maxPrice] = d3.extent(data, (d: OHLCVData) => d.close);
+    const [minDate, maxDate] = d3.extent(data, (d: OHLCVData) => d.date);
+    let minX = xScale(minDate as Date)
+    let maxX = xScale(maxDate as Date)
+    let maxY = yScale(minPrice as number)
+    let minY = yScale(maxPrice as number)
+
+    const boundedX = Math.max(minX, Math.min(event.x, maxX));
+    const boundedY = Math.max(minY, Math.min(event.y, maxY));
+
+    // // Update circle position
+    circle.attr('cx', boundedX).attr('cy', boundedY);
+
+    const price = Number(yScale.invert(boundedY).toFixed(2));
+    const date = xScale.invert(boundedX);
+
+    // Update line position
+    const isStartCircle = lineData.startCircle?.attr('id') === circleId;
+    if (isStartCircle) {
+        lineData.line.attr('x1', boundedX).attr('y1', boundedY);
+        lineData.startPrice = price;
+        lineData.startDate = date;
+    } else {
+        lineData.line.attr('x2', boundedX).attr('y2', boundedY);
+        lineData.endPrice = price;
+        lineData.endDate = date;
+    }
+
+    updateTrendingLinePriceHighlight(lineData);
+    updateTrendingLineDateHighlight(lineData)
+}
+
+function freeLineDragHandler(this: SVGLineElement, event: d3.D3DragEvent<SVGLineElement, unknown, unknown>) {
+    const line = d3.select(this);
+    const lineId = line.attr('id');
+
+    const lineData = trendingLinesData.find((d: TrendingLineData) => d.line?.attr('id') === lineId);
+
+    if (!lineData) return;
+
+    const [minPrice, maxPrice] = d3.extent(data, (d: OHLCVData) => d.close);
+    const [minDate, maxDate] = d3.extent(data, (d: OHLCVData) => d.date);
+    let minX = xScale(minDate as Date)
+    let maxX = xScale(maxDate as Date)
+    let maxY = yScale(minPrice as number)
+    let minY = yScale(maxPrice as number)
+
+    const dx = event.dx;
+    const dy = event.dy;
+    let newX1 = Number(line.attr('x1')) + dx;
+    let newX2 = Number(line.attr('x2')) + dx;
+    let newY1 = Number(line.attr('y1')) + dy;
+    let newY2 = Number(line.attr('y2')) + dy;
+
+    const boundedX1 = Math.max(minX, Math.min(newX1, maxX));
+    const boundedX2 = Math.max(minX, Math.min(newX2, maxX));
+    const boundedY1 = Math.max(minY, Math.min(newY1, maxY));
+    const boundedY2 = Math.max(minY, Math.min(newY2, maxY));
+
+    line
+        .attr('x1', boundedX1)
+        .attr('y1', boundedY1)
+        .attr('x2', boundedX2)
+        .attr('y2', boundedY2);
+
+    // Update start and end circles
+    lineData.startCircle?.attr('cx', boundedX1).attr('cy', boundedY1);
+    lineData.endCircle?.attr('cx', boundedX2).attr('cy', boundedY2);
+
+    lineData.startPrice = Number(yScale.invert(boundedY1).toFixed(2));
+    lineData.endPrice = Number(yScale.invert(boundedY2).toFixed(2));
+
+    lineData.startDate = xScale.invert(boundedX1);
+    lineData.endDate = xScale.invert(boundedX2);
+    updateTrendingLinePriceHighlight(lineData);
+    updateTrendingLineDateHighlight(lineData);
+}
+
+function hzLineDragHandler(this: SVGLineElement, event: d3.D3DragEvent<SVGLineElement, unknown, unknown>) {
+    const line = d3.select(this);
+    const lineId = line.attr('id');
+
+    const lineData = trendingLinesData.find((d: TrendingLineData) => d.line?.attr('id') === lineId);
+
+    if (!lineData) return;
+
+    const [minPrice, maxPrice] = d3.extent(data, (d: OHLCVData) => d.close);
+    let maxY = yScale(minPrice as number)
+    let minY = yScale(maxPrice as number)
+
+    const boundedY = Math.max(minY, Math.min(event.y, maxY));
+    const price = Number(yScale.invert(boundedY).toFixed(2));
+
+    lineData.line.attr('y1', boundedY).attr('y2', boundedY);
+    lineData.startPrice = price;
+    lineData.endPrice = price;
+
+    updateTrendingLinePriceHighlight(lineData);
+    updateTrendingLineDateHighlight(lineData);
+}
+
 function handleFreeTendingLineClick(boundedX: number, boundedY: number) {
     let isStartingPoint = drawingTrendingLine == null
     let freeTrendingLinesGroup = d3.select('.free-trending-lines')
@@ -251,31 +364,19 @@ function handleFreeTendingLineClick(boundedX: number, boundedY: number) {
             .attr('stroke-width', 2)
             .style('cursor', 'move');
 
+        const circleId = `trending-line-start-${Date.now()}`;
         let startCircle = freeTrendingLinesGroup
             .append('circle')
             .attr('class', 'trending-line-start')
             .attr('cx', boundedX)
             .attr('cy', boundedY)
+            .attr('id', circleId)
             .attr('r', 5)
             .attr('fill', 'white')
             .attr("stroke", "#2862ff")
             .attr("stroke-width", "2")
             .style('cursor', "default")
-            .call(d3.drag<SVGCircleElement, unknown>().on('drag', (event) => {
-                const boundedX = Math.max(margin.left, Math.min(event.x, svgWidth - margin.right));
-                const boundedY = Math.max(margin.top, Math.min(event.y, svgHeight - margin.bottom));
-                const price = Number(yScale.invert(boundedY).toFixed(2));
-                const date = xScale.invert(boundedX);
-
-                line.attr('x1', boundedX).attr('y1', boundedY);
-                startCircle.attr('cx', boundedX).attr('cy', boundedY);
-
-                const lineData = trendingLinesData.find((d: TrendingLineData) => d.line === line)!;
-                lineData.startPrice = price;
-                lineData.startDate = date;
-
-                updateTrendingLinePriceHighlight(lineData);
-            }));
+            .call(d3.drag<SVGCircleElement, unknown>().on("drag", freeLineCircleDragHandler))
 
         const price = Number(yScale.invert(boundedY).toFixed(2))
         const date = xScale.invert(boundedX);
@@ -290,43 +391,23 @@ function handleFreeTendingLineClick(boundedX: number, boundedY: number) {
             endDate: date,
             line,
             startCircle,
-            priceHighlightRect: startTrendingLinePriceHighlight(price, boundedY, svgWidth, margin, false)
+            priceHighlightRect: startTrendingLinePriceHighlight(price, boundedY, svgWidth, margin, false),
+            dateHighlightRect: startTrendingLineDateHighlight(date, boundedX, svgHeight, margin, false),
         }
     }
     else if (drawingTrendingLine) {
-        let line = drawingTrendingLine.line
+        const lineId = `trending-line-${Date.now()}`;
+        drawingTrendingLine.line
             .attr('x2', boundedX)
             .attr('y2', boundedY)
-            .call(d3.drag<SVGLineElement, unknown>().on('drag', (event) => {
-                const dx = event.dx;
-                const dy = event.dy;
+            .attr('id', lineId)
+            .call(d3.drag<SVGLineElement, unknown>().on("drag", freeLineDragHandler));
 
-                const lineData = trendingLinesData.find((d: TrendingLineData) => d.line === line)!;
-
-                let newX1 = Number(line.attr('x1')) + dx;
-                let newX2 = Number(line.attr('x2')) + dx;
-                let newY1 = Number(line.attr('y1')) + dy;
-                let newY2 = Number(line.attr('y2')) + dy;
-
-                line
-                    .attr('x1', newX1)
-                    .attr('y1', newY1)
-                    .attr('x2', newX2)
-                    .attr('y2', newY2);
-
-                // Update start and end circles
-                lineData.startCircle?.attr('cx', newX1).attr('cy', newY1);
-                lineData.endCircle?.attr('cx', newX2).attr('cy', newY2);
-                lineData.startPrice = Number(yScale.invert(newY1).toFixed(2));
-                lineData.endPrice = Number(yScale.invert(newY2).toFixed(2));
-                lineData.startDate = xScale.invert(newX1);
-                lineData.endDate = xScale.invert(newX2);
-                updateTrendingLinePriceHighlight(lineData);
-            }));
-
+        const circleId = `trending-line-end-${Date.now()}`;
         let endCircle = freeTrendingLinesGroup
             .append('circle')
             .attr('class', 'trending-line-end')
+            .attr('id', circleId)
             .attr('cx', boundedX)
             .attr('cy', boundedY)
             .attr('r', 5)
@@ -334,20 +415,7 @@ function handleFreeTendingLineClick(boundedX: number, boundedY: number) {
             .attr("stroke", "#2862ff")
             .attr("stroke-width", "2")
             .style('cursor', "default")
-            .call(d3.drag<SVGCircleElement, unknown>().on('drag', (event) => {
-                const boundedX = Math.max(margin.left, Math.min(event.x, svgWidth - margin.right));
-                const boundedY = Math.max(margin.top, Math.min(event.y, svgHeight - margin.bottom));
-                const price = Number(yScale.invert(boundedY).toFixed(2));
-                const date = xScale.invert(boundedX);
-                line.attr('x2', boundedX).attr('y2', boundedY);
-                endCircle.attr('cx', boundedX).attr('cy', boundedY);
-
-                const lineData = trendingLinesData.find((d: TrendingLineData) => d.line === line)!;
-                lineData.endPrice = price;
-                lineData.endDate = date;
-
-                updateTrendingLinePriceHighlight(lineData);
-            }));
+            .call(d3.drag<SVGCircleElement, unknown>().on("drag", freeLineCircleDragHandler))
 
         const endPrice = Number(yScale.invert(boundedY).toFixed(2))
         const endDate = xScale.invert(boundedX);
@@ -365,6 +433,7 @@ function handleFreeTendingLineClick(boundedX: number, boundedY: number) {
         if (!trendingLinesData.some((lineData) => lineData.id == id)) {
             trendingLinesData.push(drawingTrendingLine)
             endTrendingLinePriceHighlight(drawingTrendingLine.priceHighlightRect)
+            endTrendingLineDateHighlight(drawingTrendingLine.dateHighlightRect)
         }
         if (onTrendingLineComplete) onTrendingLineComplete()
         resetDrawingTrendingLine()
@@ -377,15 +446,18 @@ function handleFreeTrendingLineDrawing(boundedX: number, boundedY: number) {
         .attr('x2', boundedX)
         .attr('y2', boundedY)
     const price = Number(yScale.invert(boundedY).toFixed(2))
-
+    const date = new Date(yScale.invert(boundedY))
     coverTrendingLinePriceHighlight(price, boundedY, svgWidth, margin, drawingTrendingLine.priceHighlightRect)
+    coverTrendingLineDateHighlight(date, boundedX, svgHeight, margin, drawingTrendingLine.dateHighlightRect)
 }
 
 function handleHzTrendingLineClick(boundedY: number) {
     let hzTrendingLinesGroup = d3.select('.hz-trending-lines')
+    const lineId = `trending-line-${Date.now()}`;
     let hzTrendingLine = hzTrendingLinesGroup
         .append('line')
         .attr('class', 'trending-line')
+        .attr('id', lineId)
         .attr('x1', margin.left)
         .attr('y1', boundedY)
         .attr('x2', svgWidth - margin.right)
@@ -393,18 +465,7 @@ function handleHzTrendingLineClick(boundedY: number) {
         .attr('stroke', '#2862ff')
         .attr('stroke-width', 2)
         .style("cursor", "ns-resize")
-        .call(d3.drag<SVGLineElement, unknown>().on('drag', (event) => {
-            const boundedY = Math.max(margin.top, Math.min(event.y, svgHeight - margin.bottom));
-            const price = Number(yScale.invert(boundedY).toFixed(2));
-
-            hzTrendingLine.attr('y1', boundedY).attr('y2', boundedY);
-
-            const lineData = trendingLinesData.find(d => d.line === hzTrendingLine)!;
-            lineData.startPrice = price;
-            lineData.endPrice = price;
-
-            updateTrendingLinePriceHighlight(lineData);
-        }));
+        .call(d3.drag<SVGLineElement, unknown>().on("drag", hzLineDragHandler));
 
     const price = Number(yScale.invert(boundedY).toFixed(2))
     let id = `hz_${price}`
@@ -425,14 +486,86 @@ function handleHzTrendingLineClick(boundedY: number) {
     resetDrawingTrendingLine()
 }
 
-// --- TRENDING LINEs PRICE HIGhLIGHTs ----
+// --- TRENDING LINEs AXIS HIGhLIGHTs ----
+function startTrendingLineDateHighlight(
+    date: Date,
+    x: number,
+    svgHeight: number,
+    margin: Margin,
+    isHzLine: boolean
+): AxisTrendingLineHighlightRect {
+    let axisGroup = d3.select('.trending-lines-price-hightler')
+    let group = axisGroup.select(`.${isHzLine ? 'hz' : 'free'}-trending-lines-price-hightler`)
+    let startRect = group.append('rect')
+    let startText = group.append('text')
+    let endRect = isHzLine ? startRect : group.append('rect')
+    let coverRect = isHzLine ? startRect : group.append('rect')
+    let endText = isHzLine ? startText : group.append('text')
+
+    if (!isHzLine)
+        coverRect
+            .attr('x', x)
+            .attr('y', svgHeight - margin.bottom)
+            .attr('width', '100px')
+            .attr('height', '18px')
+            .attr('width', 100)
+            .attr('class', 'highlight-rect')
+            .attr('fill', '#c9d8ff')
+            .style('opacity', 0.5)
+
+    startRect
+        .attr('x', x - 50)
+        .attr('y', svgHeight - margin.bottom)
+        .attr('width', '100px')
+        .attr('height', '18px')
+        .attr('class', 'start-rect')
+        .attr('fill', isHzLine ? '#2862ff' : '#049981')
+        .style('opacity', 1)
+
+    startText
+        .attr('class', 'start-text')
+        .text(formatDate(date))
+        .attr('fill', 'white')
+        .attr('font-size', '10px')
+        .attr('text-anchor', 'middle')
+        .attr('alignment-baseline', 'middle')
+        .attr('dy', 1)
+        .attr('x', x)
+        .attr('y', (svgHeight - margin.bottom + 8));
+
+    if (!isHzLine)
+        endRect
+            .attr('x', x - 50)
+            .attr('y', svgHeight - margin.bottom)
+            .attr('width', '100px')
+            .attr('height', '18px')
+            .attr('class', 'end-rect')
+            .attr('fill', 'black')
+            .style('opacity', 0)
+
+    return ({
+        coverRect,
+        startRect,
+        endRect,
+        startText,
+        endText,
+    })
+}
+
+function endTrendingLineDateHighlight(
+    dateHighlightRect: AxisTrendingLineHighlightRect,
+) {
+    dateHighlightRect.startRect.attr('fill', '#2862ff')
+    dateHighlightRect.endRect.attr('fill', '#2862ff')
+}
+
 function startTrendingLinePriceHighlight(
     price: number,
     y: number,
     svgWidth: number,
     margin: Margin,
     isHzLine: boolean
-): TrendingLinePriceHighlight {
+): AxisTrendingLineHighlightRect {
     let axisGroup = d3.select('.trending-lines-price-hightler')
     let group = axisGroup.select(`.${isHzLine ? 'hz' : 'free'}-trending-lines-price-hightler`)
     let startRect = group.append('rect')
@@ -490,12 +623,50 @@ function startTrendingLinePriceHighlight(
     })
 }
 
+function coverTrendingLineDateHighlight(
+    date: Date,
+    x: number,
+    svgHeight: number,
+    margin: Margin,
+    dateHighlightRect: AxisTrendingLineHighlightRect,
+) {
+    dateHighlightRect.endRect
+        .attr('x', x - 50)
+        .style('opacity', 1)
+
+    dateHighlightRect.endText
+        .attr('class', 'end-text')
+        .text(formatDate(date))
+        .attr('fill', 'white')
+        .attr('font-size', '10px')
+        .attr('text-anchor', 'middle')
+        .attr('alignment-baseline', 'middle')
+        .attr('dy', 1)
+        .attr('x', x)
+        .attr('y', (svgHeight - margin.bottom + 8));
+
+    const startX = Number(dateHighlightRect.startRect.attr('x'));
+
+    if (x < startX) {
+        let endX = x + 50;
+        dateHighlightRect.coverRect
+            .attr('x', endX)
+            .attr('width', Math.max(startX - endX, 0))
+    }
+    else {
+        let endX = x - 50;
+        dateHighlightRect.coverRect
+            .attr('x', startX + 100)
+            .attr('width', Math.max(endX - (startX + 100), 0))
+    }
+}
+
 function coverTrendingLinePriceHighlight(
     price: number,
     y: number,
     svgWidth: number,
     margin: Margin,
-    priceHighlightRect: TrendingLinePriceHighlight,
+    priceHighlightRect: AxisTrendingLineHighlightRect,
 ) {
 
     let rectY = y - 6
@@ -530,7 +701,7 @@ function coverTrendingLinePriceHighlight(
 }
 
 function endTrendingLinePriceHighlight(
-    priceHighlightRect: TrendingLinePriceHighlight,
+    priceHighlightRect: AxisTrendingLineHighlightRect,
 ) {
     priceHighlightRect.startRect.attr('fill', '#2862ff')
     priceHighlightRect.endRect.attr('fill', '#2862ff')
@@ -539,12 +710,25 @@ function endTrendingLinePriceHighlight(
 // handle Trending Lines & Price Highlights On ScaleUpdate i.e zoom
 function handleTrendingLineOnScaleUpdate() {
     trendingLinesData.forEach((trendingLineData) => {
-        const { isHz, line, priceHighlightRect, startPrice, endPrice, startDate, endDate, startCircle, endCircle } = trendingLineData
+        const { isHz, line, priceHighlightRect, dateHighlightRect, startPrice, endPrice, startDate, endDate, startCircle, endCircle } = trendingLineData
 
+        const [minPrice, maxPrice] = d3.extent(data, (d: OHLCVData) => d.close);
+        const [minDate, maxDate] = d3.extent(data, (d: OHLCVData) => d.date);
+        let minX = xScale(minDate as Date)
+        let maxX = xScale(maxDate as Date)
+        let maxY = yScale(minPrice as number)
+        let minY = yScale(maxPrice as number)
+
+        // Add Trending lines
         let x1 = xScale(startDate)
         let y1 = yScale(startPrice)
         let x2 = xScale(endDate)
         let y2 = yScale(endPrice)
+
+        x1 = Math.max(minX, Math.min(x1, maxX));
+        x2 = Math.max(minX, Math.min(x2, maxX));
+        y1 = Math.max(minY, Math.min(y1, maxY));
+        y2 = Math.max(minY, Math.min(y2, maxY));
 
         // Trending line
         if (isHz) {
@@ -569,22 +753,33 @@ function handleTrendingLineOnScaleUpdate() {
                 .attr("cy", y2)
         }
 
-
         // Price Highlight Rects
         priceHighlightRect.startRect.attr('y', y1 - 6)
         priceHighlightRect.startText.attr('y', y1)
 
+        // Date Highlight Rects
+        dateHighlightRect.startRect.attr('x', x1 - 50)
+        dateHighlightRect.startText.attr('x', x1)
+
         if (!isHz) {
+            let wentLeft = x2 < x1
+
+            dateHighlightRect.endRect.attr('x', x2 - 50)
+            dateHighlightRect.endText.attr('x', x2)
+            dateHighlightRect.coverRect
+                .attr('x', wentLeft ? x2 + 50 : x1 + 50)
+                .attr('width', wentLeft ? Math.max(x1 - (x2 + 100), 0) : Math.max(x2 - (x1 + 100), 0));
+
             let wentUp = y2 < y1;
 
             // end Price tag
-            trendingLineData.priceHighlightRect.endRect.attr('y', wentUp ? y2 - 6 : y2 - 6)
+            trendingLineData.priceHighlightRect.endRect.attr('y', y2 - 6)
             trendingLineData.priceHighlightRect.endText.attr('y', y2)
 
             // area cover tag
             trendingLineData.priceHighlightRect.coverRect
                 .attr('y', wentUp ? y2 + 6 : y1 + 6)
-                .attr('height', wentUp ? (y1 - (y2 + 12)) : (y2 - (y1 + 12)))
+                .attr('height', wentUp ? Math.max(y1 - (y2 + 12), 0) : Math.max(y2 - (y1 + 12), 0));
         }
 
     });
@@ -601,64 +796,110 @@ function addTrendingLines() {
     trendingLinesData.forEach((trendingLineData) => {
         const { isHz, startPrice, endPrice, startDate, endDate } = trendingLineData
 
+        const [minPrice, maxPrice] = d3.extent(data, (d: OHLCVData) => d.close);
+        const [minDate, maxDate] = d3.extent(data, (d: OHLCVData) => d.date);
+        let minX = xScale(minDate as Date)
+        let maxX = xScale(maxDate as Date)
+        let maxY = yScale(minPrice as number)
+        let minY = yScale(maxPrice as number)
+
         // Add Trending lines
         let x1 = xScale(startDate)
         let y1 = yScale(startPrice)
         let x2 = xScale(endDate)
         let y2 = yScale(endPrice)
 
+        // in bound
+        x1 = Math.max(minX, Math.min(x1, maxX));
+        x2 = Math.max(minX, Math.min(x2, maxX));
+        y1 = Math.max(minY, Math.min(y1, maxY));
+        y2 = Math.max(minY, Math.min(y2, maxY));
+
+        // calculate & set start ends values in bound
+        x1 = Math.min(x1, x2);
+        x2 = Math.max(x1, x2);
+        y1 = Math.min(y1, y2);
+        y2 = Math.max(y1, y2);
+        trendingLineData.startDate = xScale.invert(x1)
+        trendingLineData.endDate = xScale.invert(x2)
+        trendingLineData.startPrice = Number(yScale.invert(y1).toFixed(2))
+        trendingLineData.endPrice = Number(yScale.invert(y2).toFixed(2))
+
+
         if (isHz) {
+            const lineId = `trending-line-${Date.now()}`;
             trendingLineData.line = hzTrendingLinesGroup
                 .append('line')
                 .attr('class', 'trending-line')
+                .attr('id', lineId)
                 .attr('x1', margin.left)
                 .attr('y1', y1)
                 .attr('x2', svgWidth - margin.right)
                 .attr('y2', y1)
                 .attr('stroke', '#2862ff')
                 .attr('stroke-width', 2)
+                .style("cursor", "ns-resize")
+                .call(d3.drag<SVGLineElement, unknown>().on("drag", hzLineDragHandler));
         }
         else {
+            const lineId = `trending-line-${Date.now()}`;
             trendingLineData.line = freeTrendingLinesGroup
                 .append('line')
                 .attr('class', 'trending-line')
+                .attr('id', lineId)
                 .attr("x1", x1)
                 .attr("x2", x2)
                 .attr("y1", y1)
                 .attr("y2", y2)
                 .attr('stroke', '#2862ff')
                 .attr('stroke-width', 2)
+                .style('cursor', 'move')
+                .call(d3.drag<SVGLineElement, unknown>().on("drag", freeLineDragHandler));
 
+            const startCircleId = `trending-line-start-${Date.now()}`;
             trendingLineData.startCircle = freeTrendingLinesGroup
                 .append('circle')
                 .attr('class', 'trending-line-start')
+                .attr('id', startCircleId)
                 .attr('cx', x1)
                 .attr('cy', y1)
                 .attr('r', 5)
                 .attr('fill', 'white')
                 .attr("stroke", "#2862ff")
                 .attr("stroke-width", "2")
+                .style('cursor', "default")
+                .call(d3.drag<SVGCircleElement, unknown>().on("drag", freeLineCircleDragHandler));
 
+            const endCircleId = `trending-line-end-${Date.now()}`;
             trendingLineData.endCircle = freeTrendingLinesGroup
                 .append('circle')
                 .attr('class', 'trending-line-end')
+                .attr('id', endCircleId)
                 .attr('cx', x2)
                 .attr('cy', y2)
                 .attr('r', 5)
                 .attr('fill', 'white')
                 .attr("stroke", "#2862ff")
                 .attr("stroke-width", "2")
+                .style('cursor', "default")
+                .call(d3.drag<SVGCircleElement, unknown>().on("drag", freeLineCircleDragHandler));
         }
 
         // Price Highlights
         let group = isHz ? hzAxisGroup : freeAxisGroup
-        let startRect = group.append('rect')
-        let startText = group.append('text')
-        let endRect = isHz ? startRect : group.append('rect')
-        let coverRect = isHz ? startRect : group.append('rect')
-        let endText = isHz ? startText : group.append('text')
+        let priceStartRect = group.append('rect')
+        let priceStartText = group.append('text')
+        let priceCoverRect = isHz ? priceStartRect : group.append('rect')
+        let priceEndRect = isHz ? priceStartRect : group.append('rect')
+        let priceEndText = isHz ? priceStartRect : group.append('text')
 
-        trendingLineData.priceHighlightRect.startRect = startRect
+        let dateStartRect = group.append('rect')
+        let dateStartText = group.append('text')
+        let dateCoverRect = isHz ? dateStartRect : group.append('rect')
+        let dateEndRect = isHz ? dateStartRect : group.append('rect')
+        let dateEndText = isHz ? dateStartRect : group.append('text')
+
+        trendingLineData.priceHighlightRect.startRect = priceStartRect
             .attr('x', svgWidth - margin.right)
             .attr('y', y1 - 6)
             .attr('width', '36px')
@@ -667,7 +908,7 @@ function addTrendingLines() {
             .attr('fill', '#2862ff')
             .style('opacity', 1)
 
-        trendingLineData.priceHighlightRect.startText = startText
+        trendingLineData.priceHighlightRect.startText = priceStartText
             .attr('class', 'start-text')
             .text(startPrice)
             .attr('fill', 'white')
@@ -678,9 +919,29 @@ function addTrendingLines() {
             .attr('x', (svgWidth - margin.right) + (36 / 2))
             .attr('y', y1);
 
+        trendingLineData.priceHighlightRect.startRect = dateStartRect
+            .attr('x', x1 - 50)
+            .attr('y', svgHeight - margin.bottom)
+            .attr('width', '100px')
+            .attr('height', '18px')
+            .attr('class', 'start-rect')
+            .attr('fill', '#2862ff')
+            .style('opacity', 1)
+
+        trendingLineData.priceHighlightRect.startText = dateStartText
+            .attr('class', 'start-text')
+            .text(formatDate(startDate))
+            .attr('fill', 'white')
+            .attr('font-size', '10px')
+            .attr('text-anchor', 'middle')
+            .attr('alignment-baseline', 'middle')
+            .attr('dy', 1)
+            .attr('x', x1)
+            .attr('y', (svgHeight - margin.bottom + 8));
+
         if (!isHz) {
 
-            trendingLineData.priceHighlightRect.endRect = endRect
+            trendingLineData.priceHighlightRect.endRect = priceEndRect
                 .attr('x', svgWidth - margin.right)
                 .attr('y', y2 - 6)
                 .attr('width', '36px')
@@ -689,7 +950,7 @@ function addTrendingLines() {
                 .attr('fill', '#2862ff')
                 .style('opacity', 1)
 
-            trendingLineData.priceHighlightRect.endText = endText
+            trendingLineData.priceHighlightRect.endText = priceEndText
                 .attr('class', 'end-text')
                 .text(endPrice)
                 .attr('fill', 'white')
@@ -700,16 +961,36 @@ function addTrendingLines() {
                 .attr('x', (svgWidth - margin.right) + (36 / 2))
                 .attr('y', y2);
 
-            let wentUp = y2 < y1;
+            trendingLineData.dateHighlightRect.endRect = dateEndRect
+                .attr('x', x2 - 50)
+                .attr('y', svgHeight - margin.bottom)
+                .attr('width', '100px')
+                .attr('height', '18px')
+                .attr('class', 'start-rect')
+                .attr('fill', '#2862ff')
+                .style('opacity', 1)
 
-            trendingLineData.priceHighlightRect.coverRect = coverRect
-                .attr('x', svgWidth - margin.right)
-                .attr('y', wentUp ? y2 + 6 : y1 + 6)
-                .attr('width', '36px')
-                .attr('height', wentUp ? (y1 - (y2 + 12)) : (y2 - (y1 + 12)))
-                .attr('class', 'highlight-rect')
-                .attr('fill', '#c9d8ff')
-                .style('opacity', 0.5)
+            trendingLineData.dateHighlightRect.endText = dateEndText
+                .attr('class', 'end-text')
+                .text(formatDate(endDate))
+                .attr('fill', 'white')
+                .attr('font-size', '10px')
+                .attr('text-anchor', 'middle')
+                .attr('alignment-baseline', 'middle')
+                .attr('dy', 1)
+                .attr('x', x2)
+                .attr('y', (svgHeight - margin.bottom + 8));
+
+            // let wentUp = y2 < y1;
+
+            // trendingLineData.priceHighlightRect.coverRect = coverRect
+            //     .attr('x', svgWidth - margin.right)
+            //     .attr('y', wentUp ? y2 + 6 : y1 + 6)
+            //     .attr('width', '36px')
+            //     .attr('height', wentUp ? Math.max(y1 - (y2 + 12), 0) : Math.max(y2 - (y1 + 12), 0))
+            //     .attr('class', 'highlight-rect')
+            //     .attr('fill', '#c9d8ff')
+            //     .style('opacity', 0.5)
         }
     });
 }
@@ -1125,6 +1406,31 @@ function updateTrendingLinePriceHighlight(trendingLineData: TrendingLineData) {
             .attr('y', wentUp ? endY + 6 : startY + 6)
             .attr('height', wentUp ? Math.max(startY - (endY + 12), 0) : Math.max(endY - (startY + 12), 0));
     }
+}
+
+// Add this new function to update price highlights when dragging
+function updateTrendingLineDateHighlight(trendingLineData: TrendingLineData) {
+    const { isHz, dateHighlightRect, startDate, endDate } = trendingLineData;
+
+    if (isHz) return;
+
+    const startX = xScale(startDate);
+    const endX = xScale(endDate);
+
+    dateHighlightRect.startRect.attr('x', startX - 50);
+    dateHighlightRect.startText
+        .attr('x', startX)
+        .text(formatDate(startDate));
+
+    dateHighlightRect.endRect.attr('x', endX - 50);
+    dateHighlightRect.endText
+        .attr('x', endX)
+        .text(formatDate(endDate));
+
+    const wentLeft = endX < startX;
+    dateHighlightRect.coverRect
+        .attr('x', wentLeft ? endX + 50 : startX + 50)
+        .attr('width', wentLeft ? Math.max(startX - (endX + 100), 0) : Math.max(endX - (startX + 100), 0));
 }
 
 export {

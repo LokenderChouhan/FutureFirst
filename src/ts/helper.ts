@@ -111,4 +111,19 @@ function getNumInterval(interval: Interval, ms: number): number {
     }
 }
 
-export { calculateSMA, getPeriodLabel, getStockImgUrl, getNumInterval, getAvailableInterval }
+function formatDate(date: Date): string {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const dayName = days[date.getDay()];
+    const dateNum = String(date.getDate()).padStart(2, '0');
+    const monthName = months[date.getMonth()];
+    const shortYear = String(date.getFullYear()).slice(-2);
+
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+
+    return `${dayName} ${dateNum} ${monthName}' ${shortYear} ${hours}:${minutes}`;
+}
+
+export { calculateSMA, getPeriodLabel, getStockImgUrl, getNumInterval, getAvailableInterval, formatDate }

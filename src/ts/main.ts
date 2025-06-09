@@ -165,7 +165,7 @@ timeframeSelector.addEventListener('click', async (event: Event) => {
                 !smaPeriodInput.disabled, parseInt(smaPeriodInput.value),
             );
             // add exisitng trending lines
-            addTrendingLines()
+            // addTrendingLines()
             reInitiateLive()
         }
     }
