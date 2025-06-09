@@ -116,8 +116,27 @@ function handleMouseEvents() {
             const [x, y] = d3.pointer(event, chartGroup.node());
             const boundedX = Math.max(margin.left, Math.min(x, svgWidth - margin.right));
             const boundedY = Math.max(margin.top, Math.min(y, svgHeight - margin.bottom));
+            
+            // Check if click is on a trending line
+            const clickedLine = d3.select(event.target);
+            const isTrendingLine = clickedLine.classed('trending-line');
+            
+            if (isTrendingLine) {
+                const lineId = clickedLine.attr('id');
+                const clickedTrendingLine = trendingLinesData.find(line => line.line?.attr('id') === lineId);
+                if (clickedTrendingLine) {
+                    // Hide all trending line elements first
+                    trendingLinesData.forEach(line => setTrendingLineElementsVisibility(line, false));
+                    // Show elements for clicked line
+                    setTrendingLineElementsVisibility(clickedTrendingLine, true);
+                }
+            } else {
+                // Click outside trending line - hide all elements
+                trendingLinesData.forEach(line => setTrendingLineElementsVisibility(line, false));
+            }
+
             if (isDrawingHzTrendingLine) {
-                handleHzTrendingLineClick(boundedY)
+                handleHzTrendingLineClick(boundedX, boundedY)
             }
             else if (isDrawingFreeTrendingLine) {
                 handleFreeTendingLineClick(boundedX, boundedY)
@@ -446,12 +465,12 @@ function handleFreeTrendingLineDrawing(boundedX: number, boundedY: number) {
         .attr('x2', boundedX)
         .attr('y2', boundedY)
     const price = Number(yScale.invert(boundedY).toFixed(2))
-    const date = new Date(yScale.invert(boundedY))
+    const date = new Date(xScale.invert(boundedX))
     coverTrendingLinePriceHighlight(price, boundedY, svgWidth, margin, drawingTrendingLine.priceHighlightRect)
     coverTrendingLineDateHighlight(date, boundedX, svgHeight, margin, drawingTrendingLine.dateHighlightRect)
 }
 
-function handleHzTrendingLineClick(boundedY: number) {
+function handleHzTrendingLineClick(boundedX: number, boundedY: number) {
     let hzTrendingLinesGroup = d3.select('.hz-trending-lines')
     const lineId = `trending-line-${Date.now()}`;
     let hzTrendingLine = hzTrendingLinesGroup
@@ -468,6 +487,8 @@ function handleHzTrendingLineClick(boundedY: number) {
         .call(d3.drag<SVGLineElement, unknown>().on("drag", hzLineDragHandler));
 
     const price = Number(yScale.invert(boundedY).toFixed(2))
+    const date = xScale.invert(boundedX);
+
     let id = `hz_${price}`
     if (!trendingLinesData.some((lineData) => lineData.id == id)) {
         trendingLinesData.push({
@@ -479,7 +500,8 @@ function handleHzTrendingLineClick(boundedY: number) {
             endPrice: price,
             startDate: d3.min(data, d => d.date)!,
             endDate: d3.max(data, d => d.date)!,
-            priceHighlightRect: startTrendingLinePriceHighlight(price, boundedY, svgWidth, margin, true)
+            priceHighlightRect: startTrendingLinePriceHighlight(price, boundedY, svgWidth, margin, true),
+            dateHighlightRect: startTrendingLineDateHighlight(date, boundedY, svgWidth, margin, true)
         })
     }
     if (onTrendingLineComplete) onTrendingLineComplete()
@@ -785,6 +807,48 @@ function handleTrendingLineOnScaleUpdate() {
     });
 }
 
+// Add this new function after the existing functions but before the exports
+function setTrendingLineElementsVisibility(trendingLineData: TrendingLineData, isVisible: boolean) {
+    const { startCircle, endCircle, priceHighlightRect, dateHighlightRect, isHz } = trendingLineData;
+    
+    // Set circle visibility
+    if (startCircle) {
+        startCircle.style('opacity', isVisible ? 1 : 0);
+    }
+    if (endCircle) {
+        endCircle.style('opacity', isVisible ? 1 : 0);
+    }
+
+    // Set price highlight visibility
+    if (priceHighlightRect) {
+        priceHighlightRect.startRect.style('opacity', isVisible ? 1 : 0);
+        priceHighlightRect.startText.style('opacity', isVisible ? 1 : 0);
+        if(!isHz) {
+            if (priceHighlightRect.endRect) {
+                priceHighlightRect.endRect.style('opacity', isVisible ? 1 : 0);
+                priceHighlightRect.endText.style('opacity', isVisible ? 1 : 0);
+            }
+            if (priceHighlightRect.coverRect) {
+                priceHighlightRect.coverRect.style('opacity', isVisible ? 0.5 : 0);
+            }
+
+        }
+    }
+
+    // Set date highlight visibility
+    if (dateHighlightRect) {
+        dateHighlightRect.startRect.style('opacity', isVisible ? 1 : 0);
+        dateHighlightRect.startText.style('opacity', isVisible ? 1 : 0);
+        if (dateHighlightRect.endRect) {
+            dateHighlightRect.endRect.style('opacity', isVisible ? 1 : 0);
+            dateHighlightRect.endText.style('opacity', isVisible ? 1 : 0);
+        }
+        if (dateHighlightRect.coverRect) {
+            dateHighlightRect.coverRect.style('opacity', isVisible ? 0.5 : 0);
+        }
+    }
+}
+
 // add existing trending lines if were there: called on timeframe / interval change
 function addTrendingLines() {
     let freeTrendingLinesGroup = d3.select('.free-trending-lines')
@@ -981,19 +1045,13 @@ function addTrendingLines() {
                 .attr('x', x2)
                 .attr('y', (svgHeight - margin.bottom + 8));
 
-            // let wentUp = y2 < y1;
-
-            // trendingLineData.priceHighlightRect.coverRect = coverRect
-            //     .attr('x', svgWidth - margin.right)
-            //     .attr('y', wentUp ? y2 + 6 : y1 + 6)
-            //     .attr('width', '36px')
-            //     .attr('height', wentUp ? Math.max(y1 - (y2 + 12), 0) : Math.max(y2 - (y1 + 12), 0))
-            //     .attr('class', 'highlight-rect')
-            //     .attr('fill', '#c9d8ff')
-            //     .style('opacity', 0.5)
         }
+
+        // Initially hide all elements
+        setTrendingLineElementsVisibility(trendingLineData, false);
     });
 }
+
 // add new data point to chart
 function addDataPoint(dataPoint: OHLCVData) {
     data.push(dataPoint)
