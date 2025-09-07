@@ -295,7 +295,7 @@ function freeLineCircleDragHandler(this: SVGCircleElement, event: d3.D3DragEvent
     }
 
     updateTrendingLinePriceHighlight(lineData);
-    updateTrendingLineDateHighlight(lineData)
+    updateTrendingLineDateHighlight(lineData);
 }
 
 function freeLineDragHandler(this: SVGLineElement, event: d3.D3DragEvent<SVGLineElement, unknown, unknown>) {
@@ -342,6 +342,10 @@ function freeLineDragHandler(this: SVGLineElement, event: d3.D3DragEvent<SVGLine
     lineData.endDate = xScale.invert(boundedX2);
     updateTrendingLinePriceHighlight(lineData);
     updateTrendingLineDateHighlight(lineData);
+
+    trendingLinesData.forEach((d: TrendingLineData) => {
+        setTrendingLineElementsVisibility(d, d.line?.attr('id') === lineId ? true : false)
+    });
 }
 
 function hzLineDragHandler(this: SVGLineElement, event: d3.D3DragEvent<SVGLineElement, unknown, unknown>) {
@@ -365,6 +369,10 @@ function hzLineDragHandler(this: SVGLineElement, event: d3.D3DragEvent<SVGLineEl
 
     updateTrendingLinePriceHighlight(lineData);
     updateTrendingLineDateHighlight(lineData);
+    trendingLinesData.forEach((d: TrendingLineData) => {
+        if(d.line?.attr('id') === lineId) setTrendingLineElementsVisibility(d, true)
+        else setTrendingLineElementsVisibility(d, false)
+    });
 }
 
 function handleFreeTendingLineClick(boundedX: number, boundedY: number) {
@@ -868,27 +876,26 @@ function addTrendingLines() {
         let minY = yScale(maxPrice as number)
 
         // Add Trending lines
-        let x1 = xScale(startDate)
-        let y1 = yScale(startPrice)
-        let x2 = xScale(endDate)
-        let y2 = yScale(endPrice)
-
+        let originalx1 = xScale(startDate)
+        let originaly1 = yScale(startPrice)
+        let originalx2 = xScale(endDate)
+        let originaly2 = yScale(endPrice)
         // in bound
-        x1 = Math.max(minX, Math.min(x1, maxX));
-        x2 = Math.max(minX, Math.min(x2, maxX));
-        y1 = Math.max(minY, Math.min(y1, maxY));
-        y2 = Math.max(minY, Math.min(y2, maxY));
+        let x1 = Math.max(minX, Math.min(originalx1, maxX));
+        let x2 = Math.max(minX, Math.min(originalx2, maxX));
+        let y1 = Math.max(minY, Math.min(originaly1, maxY));
+        let y2 = Math.max(minY, Math.min(originaly2, maxY));
 
         // calculate & set start ends values in bound
-        x1 = Math.min(x1, x2);
-        x2 = Math.max(x1, x2);
-        y1 = Math.min(y1, y2);
-        y2 = Math.max(y1, y2);
+        // let x1 = Math.min(inBoundx1, inBoundx2);
+        // let x2 = Math.max(inBoundx1, inBoundx2);
+        // let y1 = Math.max(inBoundy1, inBoundy2);
+        // let y2 = Math.min(inBoundy1, inBoundy2);
+
         trendingLineData.startDate = xScale.invert(x1)
         trendingLineData.endDate = xScale.invert(x2)
         trendingLineData.startPrice = Number(yScale.invert(y1).toFixed(2))
         trendingLineData.endPrice = Number(yScale.invert(y2).toFixed(2))
-
 
         if (isHz) {
             const lineId = `trending-line-${Date.now()}`;
@@ -983,7 +990,7 @@ function addTrendingLines() {
             .attr('x', (svgWidth - margin.right) + (36 / 2))
             .attr('y', y1);
 
-        trendingLineData.priceHighlightRect.startRect = dateStartRect
+        trendingLineData.dateHighlightRect.startRect = dateStartRect
             .attr('x', x1 - 50)
             .attr('y', svgHeight - margin.bottom)
             .attr('width', '100px')
@@ -992,7 +999,7 @@ function addTrendingLines() {
             .attr('fill', '#2862ff')
             .style('opacity', 1)
 
-        trendingLineData.priceHighlightRect.startText = dateStartText
+        trendingLineData.dateHighlightRect.startText = dateStartText
             .attr('class', 'start-text')
             .text(formatDate(startDate))
             .attr('fill', 'white')
@@ -1025,6 +1032,18 @@ function addTrendingLines() {
                 .attr('x', (svgWidth - margin.right) + (36 / 2))
                 .attr('y', y2);
 
+            trendingLineData.priceHighlightRect.coverRect = priceEndText
+                .attr('class', 'end-text')
+                .text(endPrice)
+                .attr('fill', 'white')
+                .attr('font-size', '10px')
+                .attr('text-anchor', 'middle')
+                .attr('alignment-baseline', 'middle')
+                .attr('dy', 1)
+                .attr('x', (svgWidth - margin.right) + (36 / 2))
+                .attr('y', y2);
+            
+            
             trendingLineData.dateHighlightRect.endRect = dateEndRect
                 .attr('x', x2 - 50)
                 .attr('y', svgHeight - margin.bottom)
